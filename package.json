@@ -1,0 +1,52 @@
+{
+  "name": "menreiki",
+  "version": "1.0.0",
+  "author": "不知火 Shiranui",
+  "homepage": "https://shiranui.xyz",
+  "license": "MIT",
+  "type": "module",
+  "main": "app.ts",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "nodemon app.ts",
+    "start": "node app.ts",
+    "lint": "npx lint-staged",
+    "lint:es": "eslint .",
+    "lint:es:fix": "eslint . --fix",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,ts}": "eslint"
+  },
+  "dependencies": {
+    "discord-api-types": "^0.37.83",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "openai": "^6.15.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
+    "@eslint/js": "^9.33.0",
+    "@types/node": "^20.10.6",
+    "@types/node-schedule": "^2.1.8",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^9.39.1",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-jsdoc": "^61.4.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.0",
+    "nodemon": "^3.1.0",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.39.1"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
+}
