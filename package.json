@@ -21,10 +21,15 @@
     "*.{js,ts}": "eslint"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.13",
+    "@langchain/langgraph": "^1.0.15",
+    "@langchain/openai": "^1.2.2",
     "discord-api-types": "^0.37.83",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
-    "openai": "^6.15.0"
+    "openai": "^6.15.0",
+    "tavily": "^1.0.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.4.4",

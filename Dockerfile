@@ -1,4 +1,4 @@
-FROM node:24-alpine
+FROM keymetrics/pm2:24-alpine
 
 RUN addgroup \
     -g 8383 \
@@ -13,6 +13,7 @@ RUN mkdir -p /.npm /workplace
 WORKDIR /workplace
 ADD . /workplace
 
+RUN chmod +x /workplace/docker-entrypoint.sh
 RUN chown -R \
     8383:8383 \
     /.npm /workplace
@@ -20,4 +21,4 @@ RUN chown -R \
 USER 8383
 RUN npm install
 
-CMD ["npm", "start"]
+CMD ["/workplace/docker-entrypoint.sh"]
