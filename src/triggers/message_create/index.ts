@@ -7,7 +7,7 @@ import {
 } from "../../clients/discord.ts";
 import {
   chatWithAI,
-} from "../../clients/openai.ts";
+} from "../../agents/general.ts";
 
 /**
  * Message create event handler.
