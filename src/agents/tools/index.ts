@@ -1,25 +1,25 @@
 import {
-    type StructuredToolInterface,
+  type StructuredToolInterface,
 } from "@langchain/core/tools";
 
 import {
-    currentTimeTool,
+  currentTimeTool,
 } from "./time.ts";
 import {
-    tavilySearchTool,
-    isEnabled as isTavilyEnabled,
+  isEnabled as isTavilyEnabled,
+  tavilySearchTool,
 } from "./tavily.ts";
 
 export const tools: StructuredToolInterface[] = [
-    currentTimeTool,
+  currentTimeTool,
 ];
 
 if (isTavilyEnabled) {
-    tools.push(tavilySearchTool);
+  tools.push(tavilySearchTool);
 }
 
 export const toolMap: Record<
     string, StructuredToolInterface
 > = Object.fromEntries(
-    tools.map((toolImpl) => [toolImpl.name, toolImpl]),
+  tools.map((toolImpl) => [toolImpl.name, toolImpl]),
 );
