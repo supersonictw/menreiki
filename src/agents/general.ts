@@ -1,15 +1,5 @@
 import OpenAI from "openai";
-import type { MenreikiAgent } from "../types/agents.ts";
-
-const {
-  OPENAI_BASE_URL: baseURL,
-  OPENAI_API_KEY: apiKey,
-  OPENAI_CHAT_MODEL: chatModel,
-} = process.env as {
-    OPENAI_BASE_URL?: string;
-    OPENAI_API_KEY?: string;
-    OPENAI_CHAT_MODEL?: string;
-};
+import type { MenreikiAgent, MenreikiAgentConfig } from "../types/agents.ts";
 
 /**
  * General AI agent based on OpenAI Chat Completion API.
@@ -17,13 +7,18 @@ const {
 export class GeneralAgent implements MenreikiAgent {
   private readonly client: OpenAI;
   private readonly chatHistoryMapper: Map<string, Array<OpenAI.Chat.ChatCompletionMessageParam>>;
-  private readonly prependPrompts: Array<OpenAI.Chat.ChatCompletionMessageParam> = [];
+  private readonly config: MenreikiAgentConfig;
 
   /**
    * Initialize the GeneralAgent.
+   * @param config - The agent configuration.
    */
-  constructor() {
-    this.client = new OpenAI({ baseURL, apiKey });
+  constructor(config: MenreikiAgentConfig) {
+    this.config = config;
+    this.client = new OpenAI({
+      baseURL: config.baseURL,
+      apiKey: config.apiKey,
+    });
     this.chatHistoryMapper = new Map<string, Array<OpenAI.Chat.ChatCompletionMessageParam>>();
   }
 
@@ -60,9 +55,9 @@ export class GeneralAgent implements MenreikiAgent {
     };
 
     const response = await this.client.chat.completions.create({
-      model: chatModel as string,
+      model: this.config.model,
       messages: [
-        ...this.prependPrompts,
+        { role: "system", content: this.config.systemPrompt },
         ...chatHistory,
         userPromptMessage,
       ],

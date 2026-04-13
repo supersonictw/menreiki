@@ -1,5 +1,6 @@
 import { GeneralAgent } from "./general.ts";
 import { ThinkingAgent } from "./thinking.ts";
+import type { MenreikiAgentConfig } from "../types/agents.ts";
 
 const {
   OPENAI_CHAT_MODEL: chatModel,
@@ -7,12 +8,17 @@ const {
   OPENAI_BASE_URL: baseURL,
 } = process.env;
 
-export const generalAgent = new GeneralAgent();
-
-export const thinkingAgent = new ThinkingAgent({
+const config: MenreikiAgentConfig = {
   model: chatModel || "gpt-4o",
   apiKey: apiKey || "",
   baseURL: baseURL,
+  systemPrompt: "You are a helpful assistant.",
+};
+
+export const generalAgent = new GeneralAgent(config);
+
+export const thinkingAgent = new ThinkingAgent({
+  ...config,
   systemPrompt: "You are a helpful assistant with thinking capabilities.",
 });
 

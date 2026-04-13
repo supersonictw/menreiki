@@ -23,7 +23,6 @@ import {
   toolMap,
   tools,
 } from "./tools/index.ts";
-import type { MenreikiAgent } from "../types/agents.ts";
 
 const MAX_TOOL_STEPS = Number(process.env.AGENT_MAX_TOOL_STEPS) || 6;
 const MAX_TOOL_CALLS = Number(process.env.AGENT_MAX_TOOL_CALLS) || 10;
@@ -144,13 +143,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries: number) {
   throw lastError;
 }
 
-export type ReActAgentConfig = {
-    model: string;
-    apiKey: string;
-    baseURL?: string;
-    temperature?: number;
-    systemPrompt: string;
-};
+import type { MenreikiAgent, MenreikiAgentConfig } from "../types/agents.ts";
 
 /**
  * Decide whether the agent should continue with tool execution or stop.
@@ -246,7 +239,7 @@ export class ThinkingAgent implements MenreikiAgent {
    * Initialize the ThinkingAgent.
    * @param config - The agent configuration.
    */
-  constructor(config: ReActAgentConfig) {
+  constructor(config: MenreikiAgentConfig) {
     const prompt = ChatPromptTemplate.fromMessages([
       ["system", config.systemPrompt],
       new MessagesPlaceholder("messages"),
