@@ -1,3 +1,5 @@
+export type MenreikiAgentModeType = "general" | "thinking";
+
 export type MenreikiAgentConfig = {
   model: string;
   apiKey: string;

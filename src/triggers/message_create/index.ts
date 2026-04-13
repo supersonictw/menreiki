@@ -6,7 +6,7 @@ import {
   client,
 } from "../../clients/discord.ts";
 import {
-  generalAgent,
+  fetchAgent,
 } from "../../agents/index.ts";
 
 /**
@@ -31,7 +31,8 @@ export default async function messageCreate(message: Message) {
     return;
   }
 
-  const responseContent = await generalAgent.chatWithAI(message.channel.id, requestContent);
+  const agent = fetchAgent();
+  const responseContent = await agent.chatWithAI(message.channel.id, requestContent);
   if (!responseContent) {
     await message.reply("Sorry, I seem to be having trouble thinking. Please try saying it in a different way.");
     return;
