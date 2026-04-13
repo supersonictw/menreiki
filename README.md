@@ -2,7 +2,7 @@
 
 > 咲き狂え彼岸花 染まる色に嗤え
 
-![avatar](avatar.png)
+![avatar](avatar.min.png)
 
 Artificially Intelligent Agent on Discord.
 
