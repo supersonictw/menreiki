@@ -30,7 +30,7 @@ const thinkingAgent = new ThinkingAgent(config);
  */
 export function fetchAgent(agentType: MenreikiAgentModeType | null = null) {
   if (agentType === null) {
-    agentType = agentModeType as MenreikiAgentModeType;
+    agentType = (agentModeType as MenreikiAgentModeType) || "general";
   }
   switch (agentType) {
     case "general":

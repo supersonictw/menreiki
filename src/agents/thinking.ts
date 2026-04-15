@@ -266,14 +266,14 @@ export class ThinkingAgent implements MenreikiAgent {
 
     const compiled = workflow.compile();
 
-        type InvokeParams = Parameters<typeof compiled.invoke>;
-        const originalInvoke = compiled.invoke.bind(compiled);
-        compiled.invoke = ((input: InvokeParams[0], cfg?: InvokeParams[1]) =>
-          withTimeout(originalInvoke(input, cfg), AGENT_TIMEOUT_MS, "Agent")
-        ) as typeof compiled.invoke;
+    type InvokeParams = Parameters<typeof compiled.invoke>;
+    const originalInvoke = compiled.invoke.bind(compiled);
+    compiled.invoke = ((input: InvokeParams[0], cfg?: InvokeParams[1]) =>
+      withTimeout(originalInvoke(input, cfg), AGENT_TIMEOUT_MS, "Agent")
+    ) as typeof compiled.invoke;
 
-        this.agent = compiled;
-        this.chatHistoryMapper = new Map<string, BaseMessage[]>();
+    this.agent = compiled;
+    this.chatHistoryMapper = new Map<string, BaseMessage[]>();
   }
 
   /**
@@ -303,7 +303,10 @@ export class ThinkingAgent implements MenreikiAgent {
       if (chatHistory.length > 30) {
         chatHistory.splice(0, 2);
       }
-      return aiMessage.content as string;
+      if (typeof aiMessage.content !== "string") {
+        throw new Error(`AI response is not a string: ${JSON.stringify(aiMessage.content)}`);
+      }
+      return aiMessage.content;
     }
 
     return "I'm sorry, I couldn't generate a response.";
