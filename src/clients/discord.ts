@@ -10,6 +10,7 @@ import {
   GatewayIntentBits,
   type GuildMember,
   Partials,
+  PresenceUpdateStatus,
 } from "discord.js";
 
 const appId = process.env.DISCORD_APP_ID;
@@ -41,14 +42,14 @@ export const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
   presence: presenceJson ? JSON.parse(presenceJson) : {
-    status: "online",
+    status: PresenceUpdateStatus.Online,
     activities: [
       {
         name: "咲き狂え彼岸花 染まる色に嗤え",
         type: ActivityType.Listening,
-      }
+      },
     ],
-  }
+  },
 });
 client.login(botToken);
 

@@ -33,12 +33,12 @@ export function fetchAgent(agentType: MenreikiAgentModeType | null = null) {
     agentType = (agentModeType as MenreikiAgentModeType) || "general";
   }
   switch (agentType) {
-    case "general":
-      return generalAgent;
-    case "thinking":
-      return thinkingAgent;
-    default:
-      throw new Error(`Unknown agent type: ${agentType}`);
+  case "general":
+    return generalAgent;
+  case "thinking":
+    return thinkingAgent;
+  default:
+    throw new Error(`Unknown agent type: ${agentType}`);
   }
 };
 
