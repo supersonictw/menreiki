@@ -2,6 +2,7 @@ import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 
 import {
+  ActivityType,
   type APIInteractionGuildMember,
   type BaseGuild,
   type ChatInputCommandInteraction,
@@ -13,6 +14,7 @@ import {
 
 const appId = process.env.DISCORD_APP_ID;
 const botToken = process.env.DISCORD_BOT_TOKEN;
+const presenceJson = process.env.DISCORD_PRESENCE;
 
 if (!appId || !botToken) {
   throw new Error(
@@ -38,6 +40,15 @@ export const client = new Client({
     GatewayIntentBits.DirectMessageTyping,
     GatewayIntentBits.MessageContent,
   ],
+  presence: presenceJson ? JSON.parse(presenceJson) : {
+    status: "online",
+    activities: [
+      {
+        name: "咲き狂え彼岸花 染まる色に嗤え",
+        type: ActivityType.Listening,
+      }
+    ],
+  }
 });
 client.login(botToken);
 
