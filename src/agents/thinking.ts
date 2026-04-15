@@ -23,6 +23,10 @@ import {
   toolMap,
   tools,
 } from "./tools/index.ts";
+import type {
+  MenreikiAgent,
+  MenreikiAgentConfig,
+} from "../types/agents.ts";
 
 const MAX_TOOL_STEPS = Number(process.env.AGENT_MAX_TOOL_STEPS) || 6;
 const MAX_TOOL_CALLS = Number(process.env.AGENT_MAX_TOOL_CALLS) || 10;
@@ -142,8 +146,6 @@ async function withRetry<T>(fn: () => Promise<T>, retries: number) {
   }
   throw lastError;
 }
-
-import type { MenreikiAgent, MenreikiAgentConfig } from "../types/agents.ts";
 
 /**
  * Decide whether the agent should continue with tool execution or stop.
