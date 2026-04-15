@@ -3,5 +3,8 @@
 set -e
 INSTANCES="${PM2_INSTANCES:-8}"
 
+INTERPRETER="/usr/bin/node"
+ENTRYPOINT="/workplace/app.ts"
+
 echo "Starting App server with pm2-runtime (instances: $INSTANCES)..."
-exec pm2-runtime start /workplace/app.ts -i "$INSTANCES" --name app
+exec pm2-runtime start "$ENTRYPOINT" -i "$INSTANCES" --interpreter "$INTERPRETER" --name app
