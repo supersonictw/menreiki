@@ -6,8 +6,8 @@ import {
   client,
 } from "../../clients/discord.ts";
 import {
-  chatWithAI,
-} from "../../clients/openai.ts";
+  fetchAgent,
+} from "../../agents/index.ts";
 
 /**
  * Message create event handler.
@@ -31,7 +31,8 @@ export default async function messageCreate(message: Message) {
     return;
   }
 
-  const responseContent = await chatWithAI(message.channel.id, requestContent);
+  const agent = fetchAgent();
+  const responseContent = await agent.chatWithAI(message.channel.id, requestContent);
   if (!responseContent) {
     await message.reply("Sorry, I seem to be having trouble thinking. Please try saying it in a different way.");
     return;
