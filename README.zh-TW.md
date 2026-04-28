@@ -1,5 +1,7 @@
 # Menreiki 面霊氣
 
+[正體中文](README.zh-TW.md) | English
+
 > 咲き狂え彼岸花 染まる色に嗤え
 
 ![avatar](avatar.min.png)
