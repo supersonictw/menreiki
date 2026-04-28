@@ -1,6 +1,6 @@
 # Menreiki 面霊気
 
-正體中文 | [English](README.md)
+[正體中文](README.zh-TW.md) | English
 
 > 咲き狂え彼岸花 染まる色に嗤え
 
