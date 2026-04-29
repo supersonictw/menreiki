@@ -21,12 +21,14 @@ Menreiki 是一個基於多代理架構（multi-agent architecture）的 Discord
 
 每條傳入的 Discord 訊息都會經由觸發層路由到 `ThinkingAgent` 實例。該代理運行一個有狀態的 LangGraph 工作流，在模型推理與工具執行之間切換，直到模型發出完成訊號或達到步數/超時限制。聊天紀錄按頻道維護於記憶體中，並使用滾動視窗來管理上下文長度。
 
-```
-Discord 訊息
-    └─ 觸發層
-         └─ ThinkingAgent (LangGraph)
-              ├─ 代理節點 (agent node)  →  LLM (OpenAI 相容)
-              └─ 工具節點 (tools node)  →  Tavily / Time / ...
+```mermaid
+graph TD
+    A[Discord 訊息] --> B[觸發層]
+    B --> C["ThinkingAgent (LangGraph)"]
+    C --> D[代理節點 agent node]
+    C --> E[工具節點 tools node]
+    D --> F[LLM OpenAI 相容]
+    E --> G[Tavily / Time / ...]
 ```
 
 ## 開始使用

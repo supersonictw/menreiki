@@ -21,12 +21,14 @@ Menreiki is a Discord AI agent built on a multi-agent architecture. It goes beyo
 
 Each incoming Discord message is routed through a trigger layer to a `ThinkingAgent` instance. The agent runs a stateful LangGraph workflow that alternates between model inference and tool execution until the model signals completion or a step/timeout limit is reached. Chat history is maintained in-memory per channel, with a rolling window to manage context length.
 
-```
-Discord Message
-    └─ Trigger Layer
-         └─ ThinkingAgent (LangGraph)
-              ├─ agent node  →  LLM (OpenAI-compatible)
-              └─ tools node  →  Tavily / Time / ...
+```mermaid
+graph TD
+    A[Discord Message] --> B[Trigger Layer]
+    B --> C["ThinkingAgent (LangGraph)"]
+    C --> D[agent node]
+    C --> E[tools node]
+    D --> F[LLM OpenAI-compatible]
+    E --> G[Tavily / Time / ...]
 ```
 
 ## Getting Started
