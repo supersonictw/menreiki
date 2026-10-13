@@ -1,7 +1,19 @@
+# App config files
+.env
+
+# Binaries & database
+/menreiki
+/build/
+/menreiki.db
+/menreiki.db-shm
+/menreiki.db-wal
+
+# Finder config file
 .DS_Store
+
+# Directories
 node_modules
 /dist
-.env
 
 # Log files
 npm-debug.log*

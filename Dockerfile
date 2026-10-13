@@ -1,24 +1,18 @@
-FROM keymetrics/pm2:24-alpine
+# Menreiki
+# (c) 2026 Shiranui (https://shiranui.xyz).
 
-RUN addgroup \
-    -g 8383 \
-    itsuka
-RUN adduser -HD \
-    -u 8383 \
-    -G itsuka \
-    -h /workplace \
-    kotori
+FROM golang:alpine AS builder
+COPY . /app
+WORKDIR /app
+RUN apk add --no-cache build-base make
+ENV CGO_ENABLED=1
+RUN make && make clean-deps
 
-RUN mkdir -p /.npm /workplace
-WORKDIR /workplace
-ADD . /workplace
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app
+COPY --from=builder /app/build/menreiki .
+COPY avatar.png .
 
-RUN chmod +x /workplace/docker-entrypoint.sh
-RUN chown -R \
-    8383:8383 \
-    /.npm /workplace
-
-USER 8383
-RUN npm install
-
-CMD ["/workplace/docker-entrypoint.sh"]
+ENTRYPOINT ["./menreiki"]
+CMD ["serve"]
