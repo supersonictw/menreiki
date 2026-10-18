@@ -66,13 +66,11 @@ type AppConfig struct {
 	Profiles map[string]*ResolvedProfile
 }
 
-// FormatPrompt interpolates {name}, {self_name}, {personality}, {self_personality}.
+// FormatPrompt interpolates {name} and {personality} in the prompt template.
 func FormatPrompt(prompt, name, personality string) string {
 	r := strings.NewReplacer(
 		"{name}", name,
-		"{self_name}", name,
 		"{personality}", personality,
-		"{self_personality}", personality,
 	)
 	return r.Replace(prompt)
 }
@@ -98,19 +96,14 @@ func defaultGlobal() GlobalConfig {
 }
 
 // LoadAppConfig resolves the config file path from:
-// 1. specifiedPath (CLI flag/arg)
-// 2. CONFIG_FILE or MENREIKI_CONFIG environment variable
-// 3. Default cwd: "config.toml"
+// 1. specifiedPath (CLI argument / flag)
+// 2. CONFIG_FILE environment variable
+// 3. Default "config.toml"
 func LoadAppConfig(specifiedPath string) (*AppConfig, error) {
 	configPath := strings.TrimSpace(specifiedPath)
-
 	if configPath == "" {
 		configPath = strings.TrimSpace(os.Getenv("CONFIG_FILE"))
-		if configPath == "" {
-			configPath = strings.TrimSpace(os.Getenv("MENREIKI_CONFIG"))
-		}
 	}
-
 	if configPath == "" {
 		configPath = "config.toml"
 	}
@@ -132,7 +125,7 @@ func LoadAppConfig(specifiedPath string) (*AppConfig, error) {
 		return nil, fmt.Errorf("no [[profiles]] defined in %q", configPath)
 	}
 
-	// Merge global defaults
+	// Apply global settings with explicit defaults
 	global := defaultGlobal()
 	if cf.Global.LogLevel != "" {
 		global.LogLevel = cf.Global.LogLevel
@@ -151,8 +144,6 @@ func LoadAppConfig(specifiedPath string) (*AppConfig, error) {
 	}
 	if cf.Global.APIKey != "" {
 		global.APIKey = cf.Global.APIKey
-	} else if envKey := os.Getenv("OPENAI_API_KEY"); envKey != "" {
-		global.APIKey = envKey
 	}
 	if cf.Global.Mode != "" {
 		global.Mode = cf.Global.Mode
@@ -180,8 +171,6 @@ func LoadAppConfig(specifiedPath string) (*AppConfig, error) {
 	}
 	if cf.Global.TavilyAPIKey != "" {
 		global.TavilyAPIKey = cf.Global.TavilyAPIKey
-	} else if envTavily := os.Getenv("TAVILY_API_KEY"); envTavily != "" {
-		global.TavilyAPIKey = envTavily
 	}
 	if cf.Global.Presence != "" {
 		global.Presence = cf.Global.Presence
@@ -197,25 +186,20 @@ func LoadAppConfig(specifiedPath string) (*AppConfig, error) {
 			return nil, fmt.Errorf("profile #%d is missing token", i+1)
 		}
 
-		id := p.ID
-		if id == "" {
-			if p.Name != "" {
-				id = p.Name
-			} else {
-				id = fmt.Sprintf("profile-%d", i+1)
-			}
+		name := strings.TrimSpace(p.Name)
+		if name == "" {
+			name = strings.TrimSpace(p.ID)
+		}
+		if name == "" {
+			return nil, fmt.Errorf("profile #%d is missing name", i+1)
 		}
 
-		name := p.Name
-		if name == "" {
-			name = id
+		id := p.ID
+		if id == "" {
+			id = name
 		}
 
 		personality := p.Personality
-		if personality == "" {
-			personality = "helpful assistant"
-		}
-
 		prompt := p.Prompt
 		if prompt == "" {
 			prompt = global.Prompt

@@ -19,7 +19,7 @@ type GeneralAgent struct {
 
 func NewGeneralAgent(cfg Config) (*GeneralAgent, error) {
 	if cfg.APIKey == "" || cfg.Model == "" {
-		return nil, errors.New("OPENAI_API_KEY and OPENAI_CHAT_MODEL must be set")
+		return nil, errors.New("api_key and model must be set")
 	}
 
 	clientCfg := openai.DefaultConfig(cfg.APIKey)

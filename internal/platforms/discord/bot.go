@@ -60,11 +60,11 @@ func InitDiscordWithConfig(dp *DiscordPlatform, ag agent.Agent, db *database.App
 		return nil, err
 	}
 
-	if dp.Session.State != nil && dp.Session.State.User != nil {
-		bot.BotID = dp.Session.State.User.ID
-	} else if u, err := dp.Session.User("@me"); err == nil && u != nil {
-		bot.BotID = u.ID
+	u, err := dp.Session.User("@me")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch bot user info: %w", err)
 	}
+	bot.BotID = u.ID
 
 	// Auto-registration of application commands
 	if err := bot.checkCommandRegistration(); err != nil {
@@ -104,9 +104,6 @@ func (b *DiscordBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCre
 	}
 
 	botID := b.BotID
-	if botID == "" && s.State != nil && s.State.User != nil {
-		botID = s.State.User.ID
-	}
 	if botID != "" && m.Author.ID == botID {
 		return
 	}
@@ -171,19 +168,6 @@ func (b *DiscordBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCre
 
 func (b *DiscordBot) checkCommandRegistration() error {
 	id := b.BotID
-	if id == "" && b.Session.State != nil && b.Session.State.User != nil {
-		id = b.Session.State.User.ID
-	}
-
-	if id == "" {
-		u, err := b.Session.User("@me")
-		if err != nil {
-			return fmt.Errorf("failed to fetch bot user info: %w", err)
-		}
-		id = u.ID
-		b.BotID = id
-	}
-
 	currentRevision, err := b.Database.GetCommandRevision(id)
 	if err != nil {
 		return err

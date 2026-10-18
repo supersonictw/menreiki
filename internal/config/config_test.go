@@ -9,9 +9,9 @@ import (
 )
 
 func TestFormatPrompt(t *testing.T) {
-	template := "Hello, I am {name}. My persona is {personality}. Also called {self_name}."
+	template := "Hello, I am {name}. My persona is {personality}."
 	result := FormatPrompt(template, "Menreiki", "friendly spirit")
-	expected := "Hello, I am Menreiki. My persona is friendly spirit. Also called Menreiki."
+	expected := "Hello, I am Menreiki. My persona is friendly spirit."
 	if result != expected {
 		t.Errorf("FormatPrompt mismatch:\ngot:  %q\nwant: %q", result, expected)
 	}
