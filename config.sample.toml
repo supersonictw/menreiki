@@ -1,0 +1,52 @@
+# Menreiki (面霊気) Multi-Bot Configuration
+#
+# Usage:
+#   menreiki serve                  # Auto-reads config.toml (or CONFIG_FILE in .env)
+#   menreiki serve -c config.toml   # Explicitly specifies config file
+#   menreiki serve my_config.toml
+
+# ------------------------------------------------------------------------------
+# Global Settings (Fallback defaults for all profiles)
+# ------------------------------------------------------------------------------
+[global]
+log_level = "INFO"                  # DEBUG, INFO, WARN, ERROR
+database_file_path = "menreiki.db"  # SQLite database path
+show_banner = true
+
+# Global LLM Settings
+base_url = "https://api.openai.com/v1"
+api_key = "your_openai_api_key_here" # Or set OPENAI_API_KEY in .env
+model = "gpt-4o"
+mode = "general"                     # "general" or "thinking"
+
+# System Prompt Template (interpolates {name} and {personality})
+prompt = """
+名字 -> {name}
+個性 -> {personality}
+
+語言偏好 ->
+使用正體中文。
+"""
+
+# Default Presence status (optional)
+# presence = "咲き狂え彼岸花 染まる色に嗤え"
+
+# ------------------------------------------------------------------------------
+# Bot Profiles (Define each Discord bot instance with [[profiles]])
+# ------------------------------------------------------------------------------
+
+# Bot 1: General Assistant
+[[profiles]]
+name = "面靈氣一號"
+personality = "溫柔體貼的助手"
+token = "YOUR_FIRST_DISCORD_BOT_TOKEN"
+
+# Bot 2: Thinking / Research Assistant
+[[profiles]]
+name = "面靈氣二號"
+personality = "嚴謹理性的研究員"
+token = "YOUR_SECOND_DISCORD_BOT_TOKEN"
+mode = "thinking"                    # Enables ReAct tool-calling loop
+model = "gpt-4o"
+# tavily_api_key = "your_tavily_key" # Enables real-time web search
+# presence = "深度思考中..."

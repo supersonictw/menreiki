@@ -15,7 +15,7 @@ func (b *DiscordBot) registerHandlers() {
 		}
 
 		commandName := i.ApplicationCommandData().Name
-		slog.Debug("Received interaction", "command", commandName)
+		slog.Debug("Received interaction", "profile", b.ProfileID, "command", commandName)
 
 		switch commandName {
 		case "now":

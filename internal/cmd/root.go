@@ -5,8 +5,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/supersonictw/menreiki/internal/config"
 )
+
+var configFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "menreiki",
@@ -22,5 +23,5 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(config.InitConfig)
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Path to TOML configuration file")
 }

@@ -6,7 +6,7 @@
 
 ![avatar](avatar.min.png)
 
-Menreiki 是一款基於 Go (Golang) 開發的 Discord AI 代理（Agent）機器人，參考 Isla / Schwi 模組化架構設計。搭載 OpenAI Chat Completion API 與工具調用機制，能透過多步驟推理（Thinking Agent）結合工具進行計畫、檢索與回覆。
+Menreiki 是一款基於 Go (Golang) 開發的 Discord AI 代理（Agent）機器人，參考 Isla / Schwi 模組化架構設計。搭載 OpenAI Chat Completion API 與工具調用機制，支援透過單一 TOML 設定檔定義多個獨立 Profile，**以單一面靈氣實例同時啟動多個不同個性的 Discord 機器人**。
 
 ## 系統架構
 
@@ -14,28 +14,32 @@ Menreiki 是一款基於 Go (Golang) 開發的 Discord AI 代理（Agent）機�
 flowchart TD
     subgraph Initialization ["系統啟動流程 (cmd/serve.go)"]
         direction TB
-        A[載入環境變數 / Config] --> B[(SQLite Database)]
-        B --> C[初始化 AI Agent General / Thinking]
-        C --> D[初始化 Discord 平台]
-        D --> E[註冊 Slash 指令與事件監聽]
-        E --> F[更新狀態: 咲き狂え彼岸花 染まる色に嗤え]
+        A["載入設定 (config.toml)"] --> B[(SQLite Database)]
+        B --> C{"遍歷 [[profiles]]"}
+        C --> D["實例化 AI Agent (General / Thinking)"]
+        D --> E["實例化 Discord Session (Token / Gateway)"]
+        E --> F["註冊 Slash 指令與個別 Presence"]
     end
 
-    subgraph EventFlow ["事件處理流程"]
+    subgraph EventFlow ["多機器人事件處理流程"]
         direction TB
         U((Discord 使用者)) -- 發送訊息 / 指令 --> D_In[Discord Gateway]
 
-        D_In -- "@面霊気 訊息內容" --> Chat[AI 對話處理器]
-        Chat -- 查詢對話記憶與 Prompt --> Agent{Agent Mode}
-        Agent -- "General" --> LLM((OpenAI Chat API))
-        Agent -- "Thinking" --> Loop[Tool-Calling Reasoning Loop]
-        Loop --> Tools[Tools: Tavily Search / Current Time]
+        D_In -- "@機器人A 訊息" --> ChatA[機器人A: AI 對話處理器]
+        ChatA --> AgentA["Agent A (個性 / 提示詞 / 模型)"]
+        AgentA --> LLM((OpenAI / LLM API))
+        LLM --> ChatA
+        ChatA -- 回覆訊息 --> U
+
+        D_In -- "@機器人B 訊息" --> ChatB[機器人B: 思考推理處理器]
+        ChatB --> AgentB["Agent B (思考模式 + Tavily 工具)"]
+        AgentB --> Loop[ReAct 推理循環]
+        Loop --> Tools[工具: Tavily 搜尋 / 時間]
         Tools --> Loop
         Loop --> LLM
-        LLM -- 生成回覆 --> Chat
-        Chat -- 回覆訊息 --> U
+        ChatB -- 回覆訊息 --> U
 
-        D_In -- Slash Commands --> Cmds["/now, /user_id, /clear"]
+        D_In -- Slash 指令 --> Cmds["/now, /user_id, /clear"]
         Cmds --> U
     end
 
@@ -45,6 +49,9 @@ flowchart TD
 ## 特色
 
 - 基於 Go 語言的高效能與低資源消耗架構
+- **支援單一實例同時運行多個 Discord 機器人（Multi-Bot Profiles）**
+- **純 TOML 設定架構**：不依賴 `.env`，設定清晰分為全域預設 `[global]` 與機器人清單 `[[profiles]]`
+- **Prompt 人設模板替換**：在提示詞中支援 `{name}` 與 `{personality}`，輕鬆打造不同人設
 - 支援兩種 Agent 模式：
   - **General**：標準流暢的 OpenAI 對話
   - **Thinking**：具備工具調用與多步驟推理循環（ReAct）能力的思考代理
@@ -60,51 +67,86 @@ flowchart TD
 - Go 1.26 或更高版本（本機編譯）
 - 或 Docker / Docker Compose
 
-## 開始使用
+## 設定與啟動方式
 
-### 1. 建立 Discord 應用程式
+Menreiki 採用純 TOML 設定檔驅動，若未指定路徑則預設讀取當前工作目錄下的 `config.toml`。
 
-1. 前往 [Discord Developer Portal](https://discord.com/developers/applications)。
-2. 點擊 **New Application**，為其命名並儲存 **Application ID**。
-3. 開啟 **Bot** 分頁，點擊 **Reset Token** 以取得您的 **Bot Token**。
-4. 在 **Privileged Gateway Intents** 下，啟用 **Message Content Intent**。
-5. 前往 **OAuth2 > URL Generator**，勾選 `bot` 與 `applications.commands` 範圍（Scopes）。
-   新增機器人權限：**Send Messages**、**Read Message History**、**Use Slash Commands**。
-6. 在瀏覽器中開啟生成的 URL，將機器人邀請至您的伺服器。
+### 1. 建立 `config.toml`
 
-### 2. 設定環境變數
-
-複製 `.env.sample` 並命名為 `.env`：
+複製範例設定檔：
 
 ```bash
-cp .env.sample .env
+cp config.sample.toml config.toml
 ```
 
-| 變數 | 說明 | 預設值 |
-|---|---|---|
-| `OPENAI_BASE_URL` | 符合 OpenAI 規範的 API 基礎網址 | `https://api.openai.com/v1` |
-| `OPENAI_API_KEY` | LLM 提供者的 API 金鑰 | (必填) |
-| `OPENAI_CHAT_MODEL` | 使用的模型名稱 | `gpt-4o` |
-| `DISCORD_APP_ID` | 來自開發者門戶的應用程式 ID | (必填) |
-| `DISCORD_BOT_TOKEN` | 來自開發者門戶的機器人 Token | (必填) |
-| `AGENT_MODE_TYPE` | 代理模式 (`general` 或 `thinking`) | `general` |
-| `AGENT_SYSTEM_PROMPT` | 系統提示詞 | `You are a helpful assistant.` |
-| `TAVILY_API_KEY` | Tavily 搜尋 API 金鑰 (選填，啟用搜尋工具) | (無) |
-| `DATABASE_FILE_PATH` | SQLite 資料庫檔案路徑 | `menreiki.db` |
-| `LOG_LEVEL` | 日誌等級 (`DEBUG`, `INFO`, `WARN`, `ERROR`) | `INFO` |
+設定檔內容範例：
 
-### 3. 啟動機器人
+```toml
+# 全域預設設定（各 profile 未特別設定時將自動繼承）
+[global]
+log_level = "INFO"
+database_file_path = "menreiki.db"
+show_banner = true
 
-- **本機啟動**：
+base_url = "https://api.openai.com/v1"
+api_key = "your_openai_api_key_here"
+model = "gpt-4o"
+mode = "general"
+
+prompt = """
+名字 -> {name}
+個性 -> {personality}
+
+語言偏好 ->
+使用正體中文。
+"""
+
+# Profile 1：通用對話助理
+[[profiles]]
+name = "面靈氣一號"
+personality = "溫柔體貼的助手"
+token = "YOUR_FIRST_DISCORD_BOT_TOKEN"
+
+# Profile 2：深度推理研究機器人
+[[profiles]]
+name = "面靈氣二號"
+personality = "嚴謹理性的研究員"
+token = "YOUR_SECOND_DISCORD_BOT_TOKEN"
+mode = "thinking"
+model = "gpt-4o"
+# tavily_api_key = "your_tavily_key"
+```
+
+### 2. 啟動機器人
+
+- **預設啟動**（讀取當前工作目錄下之 `config.toml`）：
   ```bash
   go run ./cmd/menreiki serve
   ```
 
-- **Docker 啟動**：
+- **指定設定檔路徑**：
   ```bash
-  docker build -t menreiki .
-  docker run -d --name menreiki --restart unless-stopped --env-file .env menreiki
+  go run ./cmd/menreiki serve -c path/to/config.toml
+  # 或直接作為參數傳入
+  go run ./cmd/menreiki serve path/to/config.toml
   ```
+
+- **透過環境變數指定路徑**：
+  ```bash
+  CONFIG_FILE="path/to/config.toml" go run ./cmd/menreiki serve
+  ```
+
+### Docker 容器化執行
+
+```bash
+# 建置映像檔
+docker build -t menreiki .
+
+# 掛載 config.toml 執行
+docker run -d --name menreiki --restart unless-stopped \
+  -v $(pwd)/config.toml:/app/config.toml \
+  menreiki serve
+```
 
 ## 指令列表
 

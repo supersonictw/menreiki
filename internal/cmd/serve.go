@@ -5,96 +5,121 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/supersonictw/menreiki/internal/agent"
+	"github.com/supersonictw/menreiki/internal/config"
 	"github.com/supersonictw/menreiki/internal/database"
 	discordplatform "github.com/supersonictw/menreiki/internal/platforms/discord"
 	"github.com/supersonictw/menreiki/internal/utils"
 )
 
 var serveCmd = &cobra.Command{
-	Use:   "serve",
+	Use:   "serve [config-file]",
 	Short: "Start the Menreiki Discord bot daemon",
 	Run: func(cmd *cobra.Command, args []string) {
-		// 1. Init DB
-		databaseFilePath := viper.GetString("DATABASE_FILE_PATH")
-		if databaseFilePath == "" {
-			databaseFilePath = "menreiki.db"
+		targetFile := configFile
+		if len(args) > 0 && args[0] != "" {
+			targetFile = args[0]
 		}
 
-		utils.InitLogger(viper.GetString("LOG_LEVEL"))
-
-		appDB, err := database.InitDB(databaseFilePath)
+		appCfg, err := config.LoadAppConfig(targetFile)
 		if err != nil {
-			slog.Error("Failed to initialize database", "error", err)
+			slog.Error("Failed to load configuration", "error", err)
 			os.Exit(1)
 		}
 
-		// 2. Init Agent
-		agentCfg := agent.Config{
-			Mode:           agent.Mode(viper.GetString("AGENT_MODE_TYPE")),
-			Model:          viper.GetString("OPENAI_CHAT_MODEL"),
-			APIKey:         viper.GetString("OPENAI_API_KEY"),
-			BaseURL:        viper.GetString("OPENAI_BASE_URL"),
-			SystemPrompt:   viper.GetString("AGENT_SYSTEM_PROMPT"),
-			Temperature:    float32(viper.GetFloat64("AGENT_TEMPERATURE")),
-			MaxToolSteps:   viper.GetInt("AGENT_MAX_TOOL_STEPS"),
-			MaxToolCalls:   viper.GetInt("AGENT_MAX_TOOL_CALLS"),
-			ToolTimeoutMs:  viper.GetInt("AGENT_TOOL_TIMEOUT_MS"),
-			AgentTimeoutMs: viper.GetInt("AGENT_TIMEOUT_MS"),
-			RetryCount:     viper.GetInt("AGENT_RETRY_COUNT"),
-			TavilyAPIKey:   viper.GetString("TAVILY_API_KEY"),
-		}
+		utils.InitLogger(appCfg.Global.LogLevel)
 
-		aiAgent, err := agent.NewAgent(agentCfg)
-		if err != nil {
-			slog.Error("Failed to initialize AI agent", "error", err)
-			os.Exit(1)
-		}
-
-		// 3. Init Discord Platform
-		token := viper.GetString("DISCORD_BOT_TOKEN")
-		if token == "" {
-			token = viper.GetString("DISCORD_TOKEN")
-		}
-		if token == "" {
-			slog.Error("DISCORD_BOT_TOKEN is not set in environment variables")
-			os.Exit(1)
-		}
-
-		discordPlatform, err := discordplatform.New(token)
-		if err != nil {
-			slog.Error("Failed to create Discord platform", "error", err)
-			os.Exit(1)
-		}
-
-		// 4. Init Discord Bot
-		discordBot, err := discordplatform.InitDiscord(discordPlatform, aiAgent, appDB)
-		if err != nil {
-			slog.Error("Failed to start Discord bot", "error", err)
-			os.Exit(1)
-		}
-
-		if isShowBanner := viper.GetBool("SHOW_BANNER"); isShowBanner {
+		if appCfg.Global.ShowBanner != nil && *appCfg.Global.ShowBanner {
 			hostname, _ := os.Hostname()
-			timestamp := time.Now().String()
+			timestamp := time.Now().Format("2006-01-02 15:04:05")
 			slog.Info("面霊気 (Menreiki)")
 			slog.Info(fmt.Sprintf("已於 \"%s\"", timestamp))
 			slog.Info(fmt.Sprintf("在伺服器 \"%s\" 上啟動", hostname))
+			slog.Info(fmt.Sprintf("共載入 %d 個機器人設定檔", len(appCfg.Profiles)))
+		}
+
+		dbMap := make(map[string]*database.AppDB)
+		var runningBots []*discordplatform.DiscordBot
+
+		profileIDs := make([]string, 0, len(appCfg.Profiles))
+		for id := range appCfg.Profiles {
+			profileIDs = append(profileIDs, id)
+		}
+		sort.Strings(profileIDs)
+
+		for _, id := range profileIDs {
+			prof := appCfg.Profiles[id]
+
+			appDB, ok := dbMap[prof.DatabasePath]
+			if !ok {
+				var err error
+				appDB, err = database.InitDB(prof.DatabasePath)
+				if err != nil {
+					slog.Error("Failed to initialize database", "profile", id, "path", prof.DatabasePath, "error", err)
+					shutdownBots(runningBots)
+					os.Exit(1)
+				}
+				dbMap[prof.DatabasePath] = appDB
+			}
+
+			aiAgent, err := agent.NewAgent(prof.AgentCfg)
+			if err != nil {
+				slog.Error("Failed to initialize AI agent", "profile", id, "error", err)
+				shutdownBots(runningBots)
+				os.Exit(1)
+			}
+
+			discordPlatform, err := discordplatform.New(prof.Token)
+			if err != nil {
+				slog.Error("Failed to create Discord platform", "profile", id, "error", err)
+				shutdownBots(runningBots)
+				os.Exit(1)
+			}
+
+			discordBot, err := discordplatform.InitDiscordWithConfig(
+				discordPlatform,
+				aiAgent,
+				appDB,
+				discordplatform.BotConfig{
+					ProfileID: id,
+					Presence:  prof.Presence,
+				},
+			)
+			if err != nil {
+				slog.Error("Failed to start Discord bot", "profile", id, "error", err)
+				shutdownBots(runningBots)
+				os.Exit(1)
+			}
+
+			runningBots = append(runningBots, discordBot)
+			slog.Info("Bot profile started successfully",
+				"profile", id,
+				"name", prof.Name,
+				"mode", prof.AgentCfg.Mode,
+				"model", prof.AgentCfg.Model,
+			)
 		}
 
 		sc := make(chan os.Signal, 1)
 		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 		<-sc
 
-		_ = discordBot.Close()
-		slog.Info("Gracefully shutting down.")
+		slog.Info("Gracefully shutting down all bot instances...")
+		shutdownBots(runningBots)
+		slog.Info("All bot instances shut down successfully.")
 		os.Exit(0)
 	},
+}
+
+func shutdownBots(bots []*discordplatform.DiscordBot) {
+	for _, bot := range bots {
+		_ = bot.Close()
+	}
 }
 
 func init() {

@@ -9,25 +9,40 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/spf13/viper"
 	"github.com/supersonictw/menreiki/internal/agent"
 	"github.com/supersonictw/menreiki/internal/database"
 	"github.com/supersonictw/menreiki/internal/utils"
 )
 
+type BotConfig struct {
+	ProfileID string
+	Presence  string
+}
+
 type DiscordBot struct {
-	Session  *discordgo.Session
-	platform *DiscordPlatform
-	agent    agent.Agent
-	Database *database.AppDB
+	Session   *discordgo.Session
+	platform  *DiscordPlatform
+	agent     agent.Agent
+	Database  *database.AppDB
+	Presence  string
+	ProfileID string
+	BotID     string
+	stopChan  chan struct{}
 }
 
 func InitDiscord(dp *DiscordPlatform, ag agent.Agent, db *database.AppDB) (*DiscordBot, error) {
+	return InitDiscordWithConfig(dp, ag, db, BotConfig{})
+}
+
+func InitDiscordWithConfig(dp *DiscordPlatform, ag agent.Agent, db *database.AppDB, cfg BotConfig) (*DiscordBot, error) {
 	bot := &DiscordBot{
-		Session:  dp.Session,
-		platform: dp,
-		agent:    ag,
-		Database: db,
+		Session:   dp.Session,
+		platform:  dp,
+		agent:     ag,
+		Database:  db,
+		Presence:  cfg.Presence,
+		ProfileID: cfg.ProfileID,
+		stopChan:  make(chan struct{}),
 	}
 
 	dp.Session.AddHandler(bot.messageCreate)
@@ -45,17 +60,29 @@ func InitDiscord(dp *DiscordPlatform, ag agent.Agent, db *database.AppDB) (*Disc
 		return nil, err
 	}
 
+	if dp.Session.State != nil && dp.Session.State.User != nil {
+		bot.BotID = dp.Session.State.User.ID
+	} else if u, err := dp.Session.User("@me"); err == nil && u != nil {
+		bot.BotID = u.ID
+	}
+
 	// Auto-registration of application commands
 	if err := bot.checkCommandRegistration(); err != nil {
-		slog.Error("Error checking command registration", "error", err)
+		slog.Error("Error checking command registration", "profile", bot.ProfileID, "error", err)
 	}
 
 	// Setup status message
 	bot.setupStatusMessage()
 	go func() {
 		ticker := time.NewTicker(23 * time.Hour)
-		for range ticker.C {
-			bot.setupStatusMessage()
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				bot.setupStatusMessage()
+			case <-bot.stopChan:
+				return
+			}
 		}
 	}()
 
@@ -63,6 +90,11 @@ func InitDiscord(dp *DiscordPlatform, ag agent.Agent, db *database.AppDB) (*Disc
 }
 
 func (b *DiscordBot) Close() error {
+	select {
+	case <-b.stopChan:
+	default:
+		close(b.stopChan)
+	}
 	return b.platform.Close()
 }
 
@@ -71,8 +103,8 @@ func (b *DiscordBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCre
 		return
 	}
 
-	botID := ""
-	if s.State != nil && s.State.User != nil {
+	botID := b.BotID
+	if botID == "" && s.State != nil && s.State.User != nil {
 		botID = s.State.User.ID
 	}
 	if botID != "" && m.Author.ID == botID {
@@ -116,7 +148,7 @@ func (b *DiscordBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCre
 	responseContent, err := b.agent.ChatWithAI(ctx, m.ChannelID, content)
 	if err != nil || responseContent == "" {
 		if err != nil {
-			slog.Error("Error generating AI response", "error", err)
+			slog.Error("Error generating AI response", "profile", b.ProfileID, "error", err)
 		}
 		_, _ = s.ChannelMessageSendReply(
 			m.ChannelID,
@@ -138,8 +170,8 @@ func (b *DiscordBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCre
 }
 
 func (b *DiscordBot) checkCommandRegistration() error {
-	id := ""
-	if b.Session.State != nil && b.Session.State.User != nil {
+	id := b.BotID
+	if id == "" && b.Session.State != nil && b.Session.State.User != nil {
 		id = b.Session.State.User.ID
 	}
 
@@ -149,6 +181,7 @@ func (b *DiscordBot) checkCommandRegistration() error {
 			return fmt.Errorf("failed to fetch bot user info: %w", err)
 		}
 		id = u.ID
+		b.BotID = id
 	}
 
 	currentRevision, err := b.Database.GetCommandRevision(id)
@@ -157,12 +190,12 @@ func (b *DiscordBot) checkCommandRegistration() error {
 	}
 
 	if currentRevision < CommandRevision {
-		slog.Info("Registering commands", "old_revision", currentRevision, "new_revision", CommandRevision)
+		slog.Info("Registering commands", "profile", b.ProfileID, "bot_id", id, "old_revision", currentRevision, "new_revision", CommandRevision)
 		_, err := b.Session.ApplicationCommandBulkOverwrite(id, "", Commands)
 		if err != nil {
 			return err
 		}
-		slog.Info("Commands registered successfully")
+		slog.Info("Commands registered successfully", "profile", b.ProfileID, "bot_id", id)
 		return b.Database.SetCommandRevision(id, CommandRevision)
 	}
 
@@ -170,11 +203,24 @@ func (b *DiscordBot) checkCommandRegistration() error {
 }
 
 func (b *DiscordBot) setupStatusMessage() {
-	presenceJson := viper.GetString("DISCORD_PRESENCE")
-	if presenceJson != "" {
+	presenceStr := b.Presence
+
+	if presenceStr != "" {
 		var statusData discordgo.UpdateStatusData
-		if err := json.Unmarshal([]byte(presenceJson), &statusData); err == nil {
+		if err := json.Unmarshal([]byte(presenceStr), &statusData); err == nil {
 			if err := b.Session.UpdateStatusComplex(statusData); err == nil {
+				return
+			}
+		} else {
+			if err := b.Session.UpdateStatusComplex(discordgo.UpdateStatusData{
+				Activities: []*discordgo.Activity{
+					{
+						Name: presenceStr,
+						Type: discordgo.ActivityTypeCustom,
+					},
+				},
+				Status: string(discordgo.StatusOnline),
+			}); err == nil {
 				return
 			}
 		}
@@ -191,6 +237,6 @@ func (b *DiscordBot) setupStatusMessage() {
 		Status: string(discordgo.StatusOnline),
 	})
 	if err != nil {
-		slog.Warn("Error updating status", "error", err)
+		slog.Warn("Error updating status", "profile", b.ProfileID, "error", err)
 	}
 }
