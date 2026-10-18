@@ -1,5 +1,7 @@
 # App config files
 .env
+config.toml
+prev/
 
 # Binaries & database
 /menreiki

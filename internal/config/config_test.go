@@ -223,3 +223,22 @@ func TestLoadAppConfig_NonExistentFile(t *testing.T) {
 		t.Errorf("expected error for non-existent file, got nil")
 	}
 }
+
+func TestLoadAppConfig_ActualConfigToml(t *testing.T) {
+	if _, err := os.Stat("../../config.toml"); err != nil {
+		t.Skip("config.toml not present")
+	}
+	appCfg, err := LoadAppConfig("../../config.toml")
+	if err != nil {
+		t.Fatalf("failed to load root config.toml: %v", err)
+	}
+	if len(appCfg.Profiles) != 4 {
+		t.Errorf("expected 4 profiles in config.toml, got %d", len(appCfg.Profiles))
+	}
+	expectedBots := []string{"kotori", "furina", "isla", "automata"}
+	for _, name := range expectedBots {
+		if _, ok := appCfg.Profiles[name]; !ok {
+			t.Errorf("expected profile %q in config.toml", name)
+		}
+	}
+}
