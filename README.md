@@ -64,7 +64,7 @@ flowchart TD
 
 ## System Requirements
 
-- Go 1.26 or higher (for local builds)
+- Go 1.27 or higher (for local builds)
 - Or Docker / Docker Compose
 
 ## Configuration & Getting Started

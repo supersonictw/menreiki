@@ -64,7 +64,7 @@ flowchart TD
 
 ## 系統需求
 
-- Go 1.26 或更高版本（本機編譯）
+- Go 1.27 或更高版本（本機編譯）
 - 或 Docker / Docker Compose
 
 ## 設定與啟動方式
